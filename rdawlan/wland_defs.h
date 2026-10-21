@@ -77,11 +77,22 @@ enum WLAND_CHIP_VERSION {
 #define WLAND_MACADDR_EFUSE
 #endif
 
-#define WLAND_FIRMWARE_PATH "/var/Run/wifi/rdaw"
-//#define WLAND_DOWNLOAD_FIRMWARE_FROM_HEX
+/*
+ * The firmware and power_config.txt are compiled in from the *.bin.hex
+ * arrays, so the module needs nothing on the root filesystem. The vendor
+ * default read them from WLAND_FIRMWARE_PATH at load time, a directory
+ * no OpenIPC image has.
+ */
+//#define WLAND_FIRMWARE_PATH "/var/Run/wifi/rdaw"
+#define WLAND_DOWNLOAD_FIRMWARE_FROM_HEX
 
 #ifdef WLAND_DOWNLOAD_FIRMWARE_FROM_HEX
-#define WLAND_DOWNLOAD_FIRMWARE_FROM_HEX_FOR_RF
+/*
+ * The RF images serve only the factory RF test mode (RDA5995_TESTMODE_FILE
+ * or firmware_path=rf); station and AP use the p2p and ap images. Leaving
+ * them out keeps 360 KB of firmware out of the module.
+ */
+//#define WLAND_DOWNLOAD_FIRMWARE_FROM_HEX_FOR_RF
 struct wland_image_info {
 	unsigned char* bin_name;
 	unsigned char* buf;

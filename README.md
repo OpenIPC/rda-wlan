@@ -1,8 +1,10 @@
 # rda-wlan
 
 Rdamicro's `rdawfmac` FullMAC driver for the RDA5995 802.11b/g/n chip
-(USB `1e04:8888`, or SDIO). The firmware is compiled into the module from
-the `rdawlan/*.bin.hex` arrays; nothing is loaded from `/lib/firmware`.
+(USB `1e04:8888`, or SDIO). The firmware and `power_config.txt` are compiled
+into the module from the `rdawlan/*.bin.hex` arrays (`WLAND_DOWNLOAD_FIRMWARE_FROM_HEX`
+in `rdawlan/wland_defs.h`); nothing is read from the filesystem. The RF test-mode
+images are left out.
 
 ## Source
 
