@@ -1253,9 +1253,9 @@ s32 wland_notify_p2p_action_frame_rx(struct wland_if *ifp,
 	struct wland_p2p_info *p2p = &cfg->p2p;
 	struct afx_hdl *afx_hdl = &p2p->afx_hdl;
 	u8 *local_data = (u8 *)data;
-	u16 wid_len = local_data[6] | local_data[7] << 8;
-	u8 channel_num = local_data[9];
-	u32 mgmt_frame_len = wid_len;
+	u16 wid_len;
+	u8 channel_num;
+	u32 mgmt_frame_len;
 	struct wland_p2p_pub_act_frame *act_frm;
 	struct wland_p2psd_gas_pub_act_frame *sd_act_frm;
 	struct ieee80211_mgmt *mgmt_frame =
@@ -1266,6 +1266,15 @@ s32 wland_notify_p2p_action_frame_rx(struct wland_if *ifp,
 	s32 freq;
 	u16 mgmt_type;
 	u8 action;
+
+	/* The action frame follows the WID header and a channel byte */
+	if (e->datalen < 10)
+		return -EINVAL;
+	wid_len = local_data[6] | local_data[7] << 8;
+	if (wid_len < MAC_HDR_LEN || wid_len > e->datalen - 10)
+		return -EINVAL;
+	channel_num = local_data[9];
+	mgmt_frame_len = wid_len;
 
 	wiphy_dbg(cfg->wiphy, "mgmt_frame_len: 0x%04x, channel: 0x%04x\n",
 		  mgmt_frame_len, channel_num);
