@@ -246,6 +246,14 @@ static int wland_wid_hdrpush(struct wland_private *drvr, u16 wid, bool rw,
 		return -EINVAL;
 	}
 
+	/* Only binary WIDs have a 16-bit length; all must fit the buffer. */
+	if (rw && ((type != WID_BIN && size > U8_MAX) ||
+		   size + 5 > WLAND_DCMD_MEDLEN)) {
+		dev_err(drvr->bus_if->dev, "WID 0x%04x: %u bytes do not fit\n",
+			wid, size);
+		return -EINVAL;
+	}
+
 	prot->cmd = wid;
 	prot->offset = 0;
 	prot->rsplen = 0;
