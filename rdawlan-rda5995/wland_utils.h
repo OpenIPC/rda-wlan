@@ -77,9 +77,6 @@ bool wland_prec_enq(struct device *dev, struct pktq *q,
 u16 wland_get_cap_info(u8 *data);
 void wland_get_ssid(u8 *data, u8 *ssid, u8 *p_ssid_len);
 void wland_get_BSSID(u8 *data, u8 *bssid);
-u8 wland_get_current_channel(u8 *data, u16 rx_len);
-u8 *wland_get_data_rate(u8 *data, u16 rx_len, u8 type, u8 *rate_size);
-u8 *wland_get_tim_elm(u8 *data, u16 rx_len, u16 tag_param_offset);
 u16 wland_get_beacon_period(u8 *data);
 u8 wland_get_sub_type(u8 *header);
 
