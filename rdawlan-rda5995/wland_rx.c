@@ -248,6 +248,9 @@ static s32 wland_handle_async_info(struct wland_private *drvr,
 	u8 wid_value = 0;
 	int i;
 
+	/* Type, ID, message length, WID and WID length, then the value */
+	if (event_packet->datalen < 8)
+		return -EINVAL;
 	wid_id = p_buffer[4] | (p_buffer[5] << 8);
 
 	switch (wid_id) {
@@ -258,6 +261,11 @@ static s32 wland_handle_async_info(struct wland_private *drvr,
 		wland_fweh_push_event(drvr, event_packet, p_buffer);
 		break;
 	case WID_NETWORK_INFO:
+		/* The value is an RSSI byte and a received management frame */
+		frame_len = p_buffer[6] | (p_buffer[7] << 8);
+		if (frame_len < 1 + MAC_HDR_LEN ||
+		    frame_len > event_packet->datalen - 8)
+			return -EINVAL;
 		p_frame = &p_buffer[9]; /* initial position of mac_header */
 		sub_type = p_frame[0] & 0xFC;
 		switch (sub_type) {
@@ -277,11 +285,9 @@ static s32 wland_handle_async_info(struct wland_private *drvr,
 					break;
 			}
 			if (i != P2PAPI_BSSCFG_MAX) {
-				frame_len = (u16)(p_buffer[6] |
-						  (p_buffer[7] << 8)) - 1;
 				wland_get_assoc_ies_from_frame(drvr->iflist[i],
 							       p_frame,
-							       frame_len,
+							       frame_len - 1,
 							       sub_type);
 			}
 			break;

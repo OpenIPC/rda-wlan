@@ -2210,7 +2210,16 @@ static void wland_parse_network_info(struct wland_bss_info_le *bi, u8 *data)
 	bi->RSSI = (signed char)(data[8]);
 	p_wid_val = &data[9];
 
+	/*
+	 * wland_handle_async_info() checked that the frame fits the message.
+	 * Leaving ctl_ch at 0 drops a frame without its fixed fields and SSID.
+	 */
 	msa_len = wid_len - 1;
+	if (msa_len < ie_index + 2 ||
+	    p_wid_val[ie_index + 1] > msa_len - ie_index - 2) {
+		pr_err("network info frame too short: %u\n", msa_len);
+		return;
+	}
 
 	bi->capability = wland_get_cap_info(p_wid_val);
 	wland_get_ssid(p_wid_val, bi->SSID, &(bi->SSID_len));
@@ -3956,12 +3965,18 @@ s32 wland_get_assoc_ies_from_frame(struct wland_if *ifp, u8 *frame,
 	struct wland_cfg80211_connect_info *conn_info = &ifp->vif->conn_info;
 	s32 err = 0;
 	u16 mgmt_hdr_len = GET_MGMT_HDR_LEN(frame);
-	u16 assoc_ies_len = frame_len - mgmt_hdr_len;
+	u16 assoc_ies_len;
 	u8 sub_type = frame_stype;
 	u8 *mac_addr = frame + MAC_HDR_ADDR2_OFFSET;
 	struct wland_sta_info *sta_info;
 	u8 find = 0;
 	int i;
+
+	if (frame_len < mgmt_hdr_len + (sub_type == ASSOC_REQ ?
+			CAP_INFO_LEN + LISTEN_INTERVAL_LEN :
+			CAP_INFO_LEN + STATUS_CODE_LEN + AID_LEN))
+		return -EINVAL;
+	assoc_ies_len = frame_len - mgmt_hdr_len;
 
 	if (sub_type == ASSOC_REQ) {
 		spin_lock_bh(&conn_info->sta_info_lock);
