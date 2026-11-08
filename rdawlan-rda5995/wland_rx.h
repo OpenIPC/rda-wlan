@@ -45,7 +45,6 @@ struct dhcp_msg {
 #define DHCP_ACK			5
 /* RFC 2132 9.6, important for DHCP */
 #define DHCP_OPTION_MESSAGE_TYPE	53
-#define DHCP_OPTION_ROUTERS		3
 #define DHCP_OPTION_END			255
 
 #define NR_RECVFRAME			250
