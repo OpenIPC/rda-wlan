@@ -2182,9 +2182,10 @@ static bool wland_compare_update_same_bss(struct wland_bss_info_le *bss,
 
 static void wland_parse_network_info(struct wland_bss_info_le *bi, u8 *data)
 {
-	u8 msg_type = 0, msg_id = 0, index = 0, ext_rates = 0;
+	u8 msg_type = 0, msg_id = 0, index = 0, len;
 	u16 msg_len = 0, wid_id = 0, wid_len = 0, msa_len;
-	u8 *p_wid_val, *pbuf;
+	const u8 *ie;
+	u8 *p_wid_val;
 	u16 ie_index = MAC_HDR_LEN + TIME_STAMP_LEN + BEACON_INTERVAL_LEN +
 		CAP_INFO_LEN;
 	msg_type = data[0];
@@ -2231,13 +2232,24 @@ static void wland_parse_network_info(struct wland_bss_info_le *bi, u8 *data)
 					  msa_len - ie_index,
 					  WLAN_EID_HT_CAPABILITY);
 
-	bi->ctl_ch = wland_get_current_channel(p_wid_val, (msa_len + FCS_LEN));
+	ie = cfg80211_find_ie(WLAN_EID_DS_PARAMS, p_wid_val + ie_index,
+			      msa_len - ie_index);
+	if (ie && ie[1] >= 1)
+		bi->ctl_ch = ie[2];
 
-	pbuf = wland_get_data_rate(p_wid_val, (msa_len + FCS_LEN),
-		WLAN_EID_SUPP_RATES, &index);
-	if (pbuf) {
-		bi->rateset.count = min_t(u8, MAX_RATES, index);
-		memcpy(bi->rateset.rates, pbuf, bi->rateset.count);
+	ie = cfg80211_find_ie(WLAN_EID_SUPP_RATES, p_wid_val + ie_index,
+			      msa_len - ie_index);
+	if (ie) {
+		bi->rateset.count = min_t(u8, MAX_RATES, ie[1]);
+		memcpy(bi->rateset.rates, ie + 2, bi->rateset.count);
+	}
+
+	ie = cfg80211_find_ie(WLAN_EID_EXT_SUPP_RATES, p_wid_val + ie_index,
+			      msa_len - ie_index);
+	if (ie) {
+		len = min_t(u8, MAX_RATES - bi->rateset.count, ie[1]);
+		memcpy(bi->rateset.rates + bi->rateset.count, ie + 2, len);
+		bi->rateset.count += len;
 	}
 
 	index = (MAC_HDR_LEN + TIME_STAMP_LEN);
@@ -2246,24 +2258,11 @@ static void wland_parse_network_info(struct wland_bss_info_le *bi, u8 *data)
 
 	index += BEACON_INTERVAL_LEN + CAP_INFO_LEN;
 
-	/* The DTIM period is the fourth byte of the TIM element */
-	pbuf = wland_get_tim_elm(p_wid_val, (msa_len + FCS_LEN), index);
-	if (pbuf)
-		bi->dtim_period = pbuf[3];
-
-	pbuf = wland_get_data_rate(p_wid_val, (msa_len + FCS_LEN),
-		WLAN_EID_EXT_SUPP_RATES, &ext_rates);
-	if (pbuf) {
-		if ((ext_rates + bi->rateset.count) < (MAX_RATES + 2)) {
-			memcpy(&bi->rateset.rates[bi->rateset.count + 1],
-			       pbuf, ext_rates);
-			bi->rateset.count += ext_rates;
-		} else {
-			memcpy(&bi->rateset.rates[bi->rateset.count + 1], pbuf,
-				(MAX_RATES + 1 - bi->rateset.count));
-			bi->rateset.count = MAX_RATES + 1;
-		}
-	}
+	/* The DTIM period follows the DTIM count in the TIM element */
+	ie = cfg80211_find_ie(WLAN_EID_TIM, p_wid_val + ie_index,
+			      msa_len - ie_index);
+	if (ie && ie[1] >= 2)
+		bi->dtim_period = ie[3];
 
 	if (msa_len < index) {
 		pr_err("network info frame too short: %u\n", msa_len);
