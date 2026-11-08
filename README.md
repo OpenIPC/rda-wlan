@@ -26,3 +26,20 @@ Out of tree, against a configured kernel with `CONFIG_CFG80211`:
 The bus defaults to USB. For SDIO:
 
     make ... CONFIG_RDAWFMAC_USB= CONFIG_RDAWFMAC_SDIO=y
+
+## rdawlan-rda5995
+
+A separate copy of Rdamicro's `rdaw80211` driver, USB only, maintained for
+the RDA5995 on FH8626V100 cameras with Linux 4.19. Unlike `rdawlan/`, it
+compiles no firmware in: it loads the chip firmware through the firmware
+loader from `/lib/firmware`. With the default `firmware_path=sta`:
+
+- `rda5995_usb_code_p2p.bin`
+- `rda5995_usb_code1_p2p.bin`
+- `rda5995_usb_code2_p2p.bin`
+- `rda5995_usb_data_p2p.bin`
+
+`firmware_path=ap` loads `rda5995_usb_code_ap.bin` and
+`rda5995_usb_data_ap.bin` instead. It builds on its own:
+
+    make -C <kernel> M=$PWD/rdawlan-rda5995 ARCH=arm CROSS_COMPILE=<prefix> modules
