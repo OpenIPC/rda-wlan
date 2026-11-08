@@ -163,70 +163,6 @@ static void wland_netdev_set_multicast_list(struct net_device *ndev)
 	schedule_work(&ifp->multicast_work);
 }
 
-static int wland_check_arp(struct wland_if *ifp, struct sk_buff *pktbuf)
-{
-	struct wland_cfg80211_profile *profile = &ifp->vif->profile;
-	struct ethhdr arp_rsp_eth, *arp_eth;
-	struct arphdr *arph, *rsp_arph;
-	unsigned char *sha, *sip, *tip;
-	unsigned char *rsp_ptr;
-	struct sk_buff *skb = NULL;
-	size_t arp_len = sizeof(struct arphdr) + 2 * ETH_ALEN + 8;
-
-	if (pktbuf->protocol == htons(ETH_P_ARP)) {
-		if (pktbuf->len < ETH_HLEN + arp_len)
-			return -1;
-
-		arp_eth = (struct ethhdr *)(pktbuf->data);
-		arph = (struct arphdr *)(pktbuf->data + ETH_HLEN);
-		sha = (unsigned char *)(arph + 1);
-		sip = sha + ETH_ALEN;
-		tip = sip + 4 + ETH_ALEN;
-
-		if (ifp->vif->mode == WL_MODE_BSS &&
-		    arph->ar_op == htons(ARPOP_REQUEST) &&
-		    memcmp(tip, profile->dhcp_server_ip, 4) == 0) {
-			skb = dev_alloc_skb(ETH_HLEN + arp_len +
-					    NET_IP_ALIGN + 3);
-			if (!skb)
-				return -1;
-
-			skb->dev = ifp->ndev;
-			skb_reserve(skb, NET_IP_ALIGN);
-
-			memcpy(arp_rsp_eth.h_dest, arp_eth->h_source, ETH_ALEN);
-			memcpy(arp_rsp_eth.h_source, arp_eth->h_dest, ETH_ALEN);
-			arp_rsp_eth.h_proto = arp_eth->h_proto;
-
-			memcpy(skb->data, &arp_rsp_eth, ETH_HLEN);
-
-			rsp_arph = (struct arphdr *)(skb->data + ETH_HLEN);
-			rsp_arph->ar_hrd = arph->ar_hrd;
-			rsp_arph->ar_pro = arph->ar_pro;
-			rsp_arph->ar_hln = ETH_ALEN;
-			rsp_arph->ar_pln = 4;
-			rsp_arph->ar_op = htons(ARPOP_REPLY);
-
-			rsp_ptr = (unsigned char *)(rsp_arph + 1);
-			memcpy(rsp_ptr, profile->dhcp_server_bssid, ETH_ALEN);
-			rsp_ptr += ETH_ALEN;
-			memcpy(rsp_ptr, profile->dhcp_server_ip, 4);
-			rsp_ptr += 4;
-			memcpy(rsp_ptr, sha, ETH_ALEN);
-			rsp_ptr += ETH_ALEN;
-			memcpy(rsp_ptr, sip, 4);
-
-			skb_put(skb, ETH_HLEN + arp_len);
-
-			wland_process_8023_pkt(ifp->drvr->bus_if, skb);
-
-			dev_kfree_skb(pktbuf);
-			return 0;
-		}
-	}
-	return -1;
-}
-
 static void wland_check_tid(struct wland_if *ifp, struct sk_buff *skb)
 {
 	struct wland_cfg80211_info *cfg = ifp->drvr->config;
@@ -371,9 +307,6 @@ int wland_netdev_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 		goto done;
 	}
 
-	ret = wland_check_arp(ifp, skb);
-	if (ret == 0)
-		goto done;
 
 	wland_check_tid(ifp, skb);
 

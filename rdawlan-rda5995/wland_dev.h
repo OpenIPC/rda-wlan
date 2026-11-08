@@ -357,8 +357,6 @@ struct wland_cfg80211_profile {
 	struct wland_ssid ssid;
 	u8 bssid[ETH_ALEN];
 	u8 hidden_ssid;
-	u8 dhcp_server_ip[4];
-	u8 dhcp_server_bssid[ETH_ALEN];
 	struct wland_cfg80211_security sec;
 	u32 wepkey_idx;
 	struct wland_wsec_key wepkeys[MAX_WSEC_KEY];

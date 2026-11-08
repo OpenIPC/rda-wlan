@@ -439,13 +439,6 @@ static void wland_rx_parse_dhcp(struct wland_if *ifp, struct sk_buff *skb)
 				wland_fweh_push_event(ifp->drvr,
 						      &event_packet,
 						      (void *)&dhcph->yiaddr);
-				memcpy(ifp->vif->profile.dhcp_server_bssid,
-				       eth_hdr(skb)->h_source, ETH_ALEN);
-			}
-		} else if (option[offset] == DHCP_OPTION_ROUTERS) {
-			if (option[offset + 1] >= 4) {
-				memcpy(ifp->vif->profile.dhcp_server_ip,
-				       option + offset + 2, 4);
 			}
 		}
 		offset += 2 + option[offset + 1];
