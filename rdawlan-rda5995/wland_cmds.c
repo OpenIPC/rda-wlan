@@ -266,9 +266,16 @@ static int wland_wid_hdrpush(struct wland_private *drvr, u16 wid, bool rw,
 		wid_msg[0] = (u8)wid;
 		wid_msg[1] = (u8)(wid >> 8);
 		if (type == WID_BIN) {
+			u8 checksum = 0;
+			u16 i;
+
 			wid_msg[2] = size & 0xff;
 			wid_msg[3] = (size & 0xff00) >> 8;
 			memcpy(&wid_msg[4], val, size);
+			/* A binary value is followed by the sum of its bytes */
+			for (i = 0; i < size; i++)
+				checksum += val[i];
+			wid_msg[4 + size] = checksum;
 			wid_msg_len += (size + 4);
 			wid_msg += (size + 4);
 			wid_msg_len += 1;
