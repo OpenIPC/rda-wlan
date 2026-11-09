@@ -5192,7 +5192,8 @@ struct wland_cfg80211_info *wland_cfg80211_attach(struct wland_private *drvr,
 	err = wland_init_connect_info(cfg);
 	if (err < 0) {
 		wiphy_err(wiphy, "failed to init connect_info: %d\n", err);
-		goto cfg80211_attach_out;
+		cfg80211_p2p_detach(&cfg->p2p);
+		goto cfg80211_p2p_attach_out;
 	}
 
 	cfg->d11inf.io_type = WLAND_D11N_IOTYPE;
