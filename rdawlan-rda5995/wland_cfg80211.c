@@ -349,6 +349,17 @@ bool wland_check_vif_up(struct wland_cfg80211_vif *vif)
 	return true;
 }
 
+/* End the scan hold on data frames and send any queued during it */
+void wland_clear_scan_busy(struct wland_cfg80211_info *cfg)
+{
+	struct wland_usbdev_info *devinfo =
+		cfg->pub->bus_if->bus_priv.usb->devinfo;
+
+	clear_bit(SCAN_STATUS_BUSY, &cfg->scan_status);
+	if (!list_empty(&devinfo->tx_postq))
+		queue_work(devinfo->wland_txwq, &devinfo->tx_work);
+}
+
 s32 wland_notify_escan_complete(struct wland_cfg80211_info *cfg,
 	struct wland_if *ifp, bool aborted, bool fw_abort)
 {
@@ -364,7 +375,7 @@ s32 wland_notify_escan_complete(struct wland_cfg80211_info *cfg,
 
 	if (timer_pending(&cfg->scan_timeout)) {
 		del_timer_sync(&cfg->scan_timeout);
-		clear_bit(SCAN_STATUS_BUSY, &cfg->scan_status);
+		wland_clear_scan_busy(cfg);
 	}
 
 	if (fw_abort)
@@ -642,7 +653,7 @@ static s32 wland_cfg80211_scan(struct wiphy *wiphy,
 	return 0;
 
 scan_out:
-	clear_bit(SCAN_STATUS_BUSY, &cfg->scan_status);
+	wland_clear_scan_busy(cfg);
 	if (timer_pending(&cfg->scan_timeout))
 		del_timer_sync(&cfg->scan_timeout);
 	cfg->scan_request = NULL;
@@ -1931,7 +1942,7 @@ void wland_abort_scanning(struct wland_cfg80211_info *cfg)
 		wland_notify_escan_complete(cfg, escan->ifp, true, true);
 	}
 
-	clear_bit(SCAN_STATUS_BUSY, &cfg->scan_status);
+	wland_clear_scan_busy(cfg);
 	clear_bit(SCAN_STATUS_ABORT, &cfg->scan_status);
 }
 
@@ -2292,8 +2303,6 @@ static s32 wland_notify_escan_handler(struct wland_if *ifp,
 	struct wland_bss_info_le bss_info_le = {};
 	struct wland_bss_info_le *new_bss;
 	s32 err = 0;
-	struct wland_bus *bus_if = ifp->drvr->bus_if;
-	struct wland_usbdev_info *devinfo = bus_if->bus_priv.usb->devinfo;
 
 	ifp = vif->ifp;
 
@@ -2405,10 +2414,7 @@ static s32 wland_notify_escan_handler(struct wland_if *ifp,
 		if (timer_pending(&cfg->scan_timeout))
 			del_timer_sync(&cfg->scan_timeout);
 
-		if (test_bit(SCAN_STATUS_BUSY, &cfg->scan_status))
-			clear_bit(SCAN_STATUS_BUSY, &cfg->scan_status);
-		if (!list_empty(&devinfo->tx_postq))
-			queue_work(devinfo->wland_txwq, &devinfo->tx_work);
+		wland_clear_scan_busy(cfg);
 		if (cfg->scan_request)
 			schedule_work(&cfg->scan_report_work);
 	}
@@ -2635,7 +2641,7 @@ static s32 wland_notify_sched_scan_results(struct wland_if *ifp,
 
 		err = wland_do_escan(cfg, wiphy, ifp, request);
 		if (err < 0) {
-			clear_bit(SCAN_STATUS_BUSY, &cfg->scan_status);
+			wland_clear_scan_busy(cfg);
 			goto out_err;
 		}
 		cfg->sched_escan = true;
