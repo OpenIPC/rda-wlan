@@ -1023,6 +1023,12 @@ static int wland_usb_probe(struct usb_interface *intf,
 		}
 	}
 
+	if (!devinfo->rx_pipe || !devinfo->tx_pipe) {
+		dev_err(&usb->dev, "missing bulk endpoint\n");
+		ret = -ENODEV;
+		goto fail;
+	}
+
 	if (usb->speed == USB_SPEED_HIGH)
 		dev_info(&usb->dev,
 			 "Rdamicro high speed USB wireless device detected\n");
