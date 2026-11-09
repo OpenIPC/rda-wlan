@@ -891,12 +891,6 @@ static int wland_process_8023_pkt_reorder(struct wland_rx_info *rx_info,
 		dev_kfree_skb(skb);
 		return -EINVAL;
 	}
-	if (skb->len <= 14) {
-		dev_err_ratelimited(dev, "invalid RX skb length: %u\n",
-				    skb->len);
-		dev_kfree_skb(skb);
-		return -EINVAL;
-	}
 
 	mtu = USB_MAX_PKT_SIZE;
 
@@ -1025,11 +1019,18 @@ fail:
 
 static void wland_process_rx_datapkt(struct wland_bus *bus_if,
 				     struct wland_rx_info *rx_info,
-				     struct sk_buff *pkt)
+				     struct sk_buff *pkt, u16 rx_len)
 {
 	struct wland_if *ifp = netdev_priv(pkt->dev);
 	struct wland_cfg80211_vif *vif = ifp->vif;
 	struct wland_cfg80211_connect_info *conn_info = &ifp->vif->conn_info;
+
+	if (rx_len < WID_HEADER_LEN_RX + ETH_HLEN) {
+		dev_err_ratelimited(bus_if->dev, "RX frame too short: %u\n",
+				    rx_len);
+		wland_pkt_buf_free_skb(pkt);
+		return;
+	}
 
 	if (vif->wdev.iftype == NL80211_IFTYPE_STATION &&
 	    conn_info->wmm_enable && conn_info->n_enable &&
@@ -1096,7 +1097,7 @@ static int wland_process_rxframes(struct wland_rx_info *rx_info)
 				continue;
 			}
 			skb->dev = ifp->ndev;
-			wland_process_rx_datapkt(bus_if, rx_info, skb);
+			wland_process_rx_datapkt(bus_if, rx_info, skb, rx_len);
 
 		} else if (rx_type == PKT_TYPE_AGGR_MAC0 ||
 			   rx_type == PKT_TYPE_AGGR_MAC1) {
