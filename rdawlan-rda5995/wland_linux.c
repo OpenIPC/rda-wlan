@@ -474,9 +474,7 @@ int wland_netdev_attach(struct wland_if *ifp)
 	return 0;
 
 fail:
-	drvr->iflist[ifp->bssidx] = NULL;
 	ndev->netdev_ops = NULL;
-	free_netdev(ndev);
 	return -EBADE;
 }
 
@@ -535,15 +533,12 @@ int wland_netdev_p2p_attach(struct wland_if *ifp)
 
 	if (register_netdev(ndev)) {
 		netdev_err(ndev, "failed to register P2P netdev\n");
-		goto fail;
+		ndev->netdev_ops = NULL;
+		return -EBADE;
 	}
 
+	ndev->needs_free_netdev = true;
 	return 0;
-fail:
-	ifp->drvr->iflist[ifp->bssidx] = NULL;
-	ndev->netdev_ops = NULL;
-	free_netdev(ndev);
-	return -EBADE;
 }
 
 struct wland_if *wland_add_if(struct wland_private *drvr, s32 bssidx,
@@ -581,7 +576,6 @@ struct wland_if *wland_add_if(struct wland_private *drvr, s32 bssidx,
 			if (ifp->ndev) {
 				netif_stop_queue(ifp->ndev);
 				unregister_netdev(ifp->ndev);
-				free_netdev(ifp->ndev);
 				drvr->iflist[bssidx] = NULL;
 			}
 		} else {

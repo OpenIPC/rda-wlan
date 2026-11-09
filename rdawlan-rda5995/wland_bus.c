@@ -128,20 +128,18 @@ int wland_bus_start(struct device *dev)
 		goto out;
 	}
 
-	if (drvr->p2p_enable && p2p_ifp) {
+	if (p2p_ifp) {
 		ret = wland_netdev_p2p_attach(p2p_ifp);
 		if (ret < 0) {
 			dev_err(dev, "failed to attach P2P netdev: %d\n", ret);
 			drvr->p2p_enable = false;
-			ret = -EBADE;
-			goto netdev_p2p_attach_fail;
+			/* Unregistering frees the netdev and ifp with it */
+			wland_fws_del_interface(ifp);
+			unregister_netdev(ifp->ndev);
+			drvr->iflist[0] = NULL;
+			ifp = NULL;
+			goto out;
 		}
-	}
-
-netdev_p2p_attach_fail:
-	if (ret < 0 && ifp && ifp->ndev) {
-		unregister_netdev(ifp->ndev);
-		drvr->iflist[0] = NULL;
 	}
 
 out:
@@ -153,16 +151,17 @@ out:
 		}
 
 		if (drvr->fws) {
-			wland_fws_del_interface(ifp);
+			if (ifp)
+				wland_fws_del_interface(ifp);
 			wland_fws_deinit(drvr);
 		}
 
-		if (drvr->iflist[0]) {
-			free_netdev(drvr->iflist[0]->ndev);
+		if (ifp) {
+			free_netdev(ifp->ndev);
 			drvr->iflist[0] = NULL;
 		}
-		if (drvr->iflist[1]) {
-			free_netdev(drvr->iflist[1]->ndev);
+		if (p2p_ifp) {
+			free_netdev(p2p_ifp->ndev);
 			drvr->iflist[1] = NULL;
 		}
 	}
