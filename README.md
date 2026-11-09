@@ -43,3 +43,9 @@ loader from `/lib/firmware`. With the default `firmware_path=sta`:
 `rda5995_usb_data_ap.bin` instead. It builds on its own:
 
     make -C <kernel> M=$PWD/rdawlan-rda5995 ARCH=arm CROSS_COMPILE=<prefix> modules
+
+`rdawlan-rda5995/firmware/` holds these files as they were on the flash of
+an FH8626V100 camera with this chip, where the vendor driver loaded them.
+They are a different build from the arrays in `rdawlan/`, which this driver
+does not load: the STA profile has a fourth, 40-byte `code2` segment. No
+licence for the firmware came with them.
