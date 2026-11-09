@@ -301,11 +301,17 @@ static struct wland_vs_tlv *wland_find_wpsie(const u8 *parse, u32 len)
 static u8 wland_find_wps_req_type(struct wland_vs_tlv *wps_ie)
 {
 	u8 *buf = (u8 *)(wps_ie + 1);
+	u8 *end = (u8 *)wps_ie + wps_ie->len + 2;
+	u16 len;
 
-	while (buf < (u8 *)wps_ie + wps_ie->len + 2) {
-		if (!memcmp(buf, "\x10\x3A\x00", 3) && *(buf + 3) == 1)
-			return *(buf + 4);
-		buf += (4 + (*(buf + 3)));
+	/* Attributes have a big-endian 16-bit type and length */
+	while (end - buf >= 4) {
+		len = get_unaligned_be16(buf + 2);
+		if (len > end - buf - 4)
+			break;
+		if (get_unaligned_be16(buf) == 0x103a && len == 1)
+			return buf[4];
+		buf += 4 + len;
 	}
 	return 0;
 }
