@@ -558,6 +558,7 @@ s32 wland_notify_escan_complete(struct wland_cfg80211_info *cfg,
 				struct wland_if *ifp, bool aborted,
 				bool fw_abort);
 void wland_abort_scanning(struct wland_cfg80211_info *cfg);
+void wland_clear_scan_busy(struct wland_cfg80211_info *cfg);
 
 bool wland_vif_get_state_all(struct wland_cfg80211_info *cfg,
 			     unsigned long state);

@@ -945,7 +945,7 @@ s32 wland_notify_p2p_listen_complete(struct wland_if *ifp,
 			wdev, p2p->remain_on_channel_cookie,
 			&p2p->remain_on_channel, GFP_KERNEL);
 	}
-	clear_bit(SCAN_STATUS_BUSY, &cfg->scan_status);
+	wland_clear_scan_busy(cfg);
 
 	return 0;
 }
@@ -966,7 +966,7 @@ void wland_p2p_cancel_remain_on_channel(struct wland_if *ifp)
 	wland_p2p_set_discover_state(ifp, WL_P2P_DISC_ST_SCAN, 0, 0);
 
 	wland_notify_p2p_listen_complete(ifp, NULL, NULL);
-	clear_bit(SCAN_STATUS_BUSY, &cfg->scan_status);
+	wland_clear_scan_busy(cfg);
 }
 
 /*
@@ -1916,7 +1916,7 @@ wland_cfg80211_delay_remain_on_channel_worker(struct work_struct *work)
 					   p2p->remain_on_channel_cookie,
 					   &p2p->remain_on_channel,
 					   GFP_KERNEL);
-	clear_bit(SCAN_STATUS_BUSY, &cfg->scan_status);
+	wland_clear_scan_busy(cfg);
 }
 
 static void wland_p2p_alive_timeout_worker(struct work_struct *work)
