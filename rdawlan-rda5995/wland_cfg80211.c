@@ -2289,7 +2289,7 @@ static s32 wland_notify_escan_handler(struct wland_if *ifp,
 	struct cfg80211_scan_request *request = cfg->scan_request;
 	struct wland_cfg80211_vif *vif = cfg->scan_info.ifp->vif;
 	struct wland_bss_info_le *bss = NULL;
-	struct wland_bss_info_le bss_info_le;
+	struct wland_bss_info_le bss_info_le = {};
 	struct wland_bss_info_le *new_bss;
 	s32 err = 0;
 	struct wland_bus *bus_if = ifp->drvr->bus_if;
@@ -2307,7 +2307,6 @@ static s32 wland_notify_escan_handler(struct wland_if *ifp,
 			goto exit;
 		}
 
-		memset(&bss_info_le, '\0', sizeof(struct wland_bss_info_le));
 		wland_parse_network_info(&bss_info_le, (u8 *) data);
 		if (bss_info_le.ctl_ch == 0) {
 			netdev_err(ifp->ndev,
@@ -2322,8 +2321,6 @@ static s32 wland_notify_escan_handler(struct wland_if *ifp,
 		if (bss_info_le.ctl_ch == 14 &&
 		    cfg->pub->country_code != SITE_SURVEY_ALL_CH) {
 			netdev_dbg(ifp->ndev, "skipping channel 14 BSS\n");
-			memset(&bss_info_le, '\0',
-			       sizeof(struct wland_bss_info_le));
 			goto exit;
 		}
 
@@ -2333,7 +2330,7 @@ static s32 wland_notify_escan_handler(struct wland_if *ifp,
 		if (!request) {
 			netdev_dbg(ifp->ndev,
 				   "received BSS outside scan period\n");
-			return 0;
+			goto exit;
 		}
 
 		if (((char *)data)[9] == PROBE_RSP &&
@@ -2359,6 +2356,8 @@ static s32 wland_notify_escan_handler(struct wland_if *ifp,
 			if (wland_compare_update_same_bss(bss, &bss_info_le)) {
 				bss->time = jiffies;
 				mutex_unlock(&cfg->scan_result_lock);
+				/* The cached entry now owns the elements */
+				bss_info_le.ie = NULL;
 				goto exit;
 			}
 		}
@@ -2370,6 +2369,7 @@ static s32 wland_notify_escan_handler(struct wland_if *ifp,
 		if (IS_ERR(new_bss)) {
 			err = PTR_ERR(new_bss);
 		} else {
+			bss_info_le.ie = NULL;
 			netdev_dbg(ifp->ndev, "new BSS %pM ch %u RSSI %d SSID \"%.*s\"\n",
 				    bss_info_le.BSSID, bss_info_le.ctl_ch,
 				    bss_info_le.RSSI,
@@ -2414,6 +2414,7 @@ static s32 wland_notify_escan_handler(struct wland_if *ifp,
 	}
 
 exit:
+	kfree(bss_info_le.ie);
 	return err;
 }
 
